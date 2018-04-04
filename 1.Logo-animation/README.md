@@ -1,0 +1,2 @@
+* Пример анимации [логотипа](https://www.youtube.com/redirect?q=https%3A%2F%2Fgfycat.com%2FEsteemedSoulfulJackrabbit&v=AajoBGoz8TQ&event=video_description&redir_token=2WYn5kVhBxgDBBT3eveLOymfMdZ8MTUyMjkwNzUxMkAxNTIyODIxMTEy)
+* Результат работы в [репозитории](https://github.com/akella/lurity)

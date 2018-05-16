@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Canvas Jele effect</title>
+  <style>
+    #canvas {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+      width: calc(100% - 2em);
+      height: calc(100% - 2em);
+      box-shadow: 0 0 0 1px #ccc;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    var elem = document.getElementById('canvas');
+    var ctx = elem.getContext('2d');
+    var canvasRect = elem.getBoundingClientRect();
+
+    var dpx = devicePixelRatio || 1;
+    var w = canvas.clientWidth;
+    var h = canvas.clientHeight;
+    canvas.width = w * dpx;
+    canvas.height = h * dpx;
+    ctx.scale(dpx, dpx);
+
+    var balls = [];
+    var ballsCount = 40;
+    var RADIUS = 140;
+    var posX = Math.floor(w / 2);
+    var posY = Math.floor(h / 2);
+
+    class Ball {
+      constructor(options) {
+        Object.assign(this, options, {
+          originalX: options.x || 0,
+          originalY: options.y || 0
+        });
+      }
+
+      draw(ctx) {
+        ctx.save();
+          ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.fillStyle = this.color;
+          ctx.fill();
+        ctx.restore();
+      }
+
+      setPos(x, y) {
+        Object.assign(this, {
+          x: x,
+          y: y
+        });
+      }
+
+      calc(obj) {
+        var dx = this.x - obj.x;
+        var dy = this.y - obj.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var radDist = this.r + obj.r;
+
+        if (dist < radDist) {
+          var angle = Math.atan2(dy, dx);
+          var tx = obj.x + Math.cos(angle) * radDist;
+          var ty = obj.y + Math.sin(angle) * radDist;
+
+          this.v.x += tx - this.x;
+          this.v.y += ty - this.y;
+        }
+
+        this.v.x *= this.friction;
+        this.v.y *= this.friction;
+
+        var dx1 = this.originalX - this.x;
+        var dy1 = this.originalY - this.y;
+        this.v.x += dx1 * this.spring;
+        this.v.y += dy1 * this.spring;
+
+        this.x += this.v.x;
+        this.y += this.v.y;
+      }
+    };
+
+    var target = new Ball({
+      x: Math.floor(w / 2),
+      y: Math.floor(h / 2),
+      r: 30,
+      color: '#fc0',
+      v: {
+        x: 0,
+        y: 0
+      }
+    });
+
+    for (let i = 0; i < ballsCount; i++) {
+      balls.push(new Ball({
+        x: w / 2 + RADIUS * Math.cos(2 * Math.PI / ballsCount * i),
+        y: h / 2 + RADIUS * Math.sin(2 * Math.PI / ballsCount * i),
+        r: 2,
+        color: '#39f',
+        v: {
+          x: 0,
+          y: 0
+        },
+        friction: 0.8,
+        spring: 0.1
+      }))
+    };
+
+    function onMove(e) {
+      posX = e.clientX - canvasRect.left;
+      posY = e.clientY - canvasRect.top;
+    }
+
+    function connectBalls(ctx) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(balls[0].x, balls[0].y);
+      // balls.forEach(ball => {
+      //     ctx.lineTo(ball.x, ball.y);
+      // });
+      for (var i = 0, jlen = balls.length; i <= jlen; ++i) {
+        var p0 = balls[i + 0 >= jlen ? i + 0 - jlen : i + 0];
+        var p1 = balls[i + 1 >= jlen ? i + 1 - jlen : i + 1];
+        ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
+      }
+
+      ctx.closePath();
+      ctx.strokeStyle = '#ccc';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.stroke();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function render(ctx) {
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      connectBalls(ctx);
+      target.setPos(posX, posY);
+      target.draw(ctx);
+      balls.forEach(ball => {
+        ball.calc(target);
+        ball.draw(ctx);
+      });
+    }
+
+    elem.addEventListener('mousemove', onMove);
+
+    function update() {
+      render(ctx);
+      requestAnimationFrame(update);
+    };
+
+    update();
+  </script>
+</body>
+
+</html>

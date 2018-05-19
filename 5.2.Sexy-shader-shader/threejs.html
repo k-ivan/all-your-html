@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style type="text/css">
+    body {
+      margin: 0;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <script src="https://threejs.org/build/three.min.js"></script>
+
+  <script id="vertexShader" type="x-shader/x-vertex">
+    varying vec2 vUv;
+
+    void main() {
+      vUv = (position.xy + 1.0) * 0.5;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  </script>
+
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    varying vec2 vUv;
+    uniform vec2 u_resolution;
+    uniform vec2 u_mouse;
+    uniform float u_time;
+    uniform sampler2D texture;
+    uniform sampler2D map;
+
+    void main() {
+      float frequency = 100.0;
+      float amplitude = 0.009;
+
+      vec2 xy = vUv.xy / u_resolution.xy;
+      float map = texture2D(map, vUv).r;
+      float m = (u_mouse.x / u_resolution.x - 0.5) * 0.01;
+
+      float distortion = amplitude * sin(frequency * vUv.y + u_time) + m;
+      vec4 color = texture2D(texture, vec2(vUv.x + distortion * map, vUv.y));
+      gl_FragColor = vec4((1.0 - map) * color.rgb + map * vec3(color.r + color.g + color.b) / 3.0, 1.0);
+    }
+  </script>
+
+  <script>
+    var camera, scene, renderer;
+    var uniforms;
+    var mouse = { x: 0, y: 0 };
+    var loader = new THREE.TextureLoader();
+    var IMAGE_SIZE = 512;
+
+    function getMouseXY(e) {
+      mouse.x = e.pageX;
+      mouse.y = e.pageY;
+      uniforms.u_mouse.value.x = mouse.x;
+      uniforms.u_mouse.value.y = mouse.y;
+    }
+
+    function onWindowResize(event) {
+      renderer.setSize(IMAGE_SIZE, IMAGE_SIZE);
+      uniforms.u_resolution.value.x = IMAGE_SIZE;
+      uniforms.u_resolution.value.y = IMAGE_SIZE;
+      uniforms.u_mouse.value.x = mouse.x;
+      uniforms.u_mouse.value.y = mouse.y;
+    }
+
+    function animate() {
+      render();
+      requestAnimationFrame(animate);
+    }
+
+    function render() {
+      uniforms.u_time.value += 0.05;
+      renderer.render(scene, camera);
+    }
+
+    function init() {
+      uniforms = {
+        u_time: { type: "f", value: 1.0 },
+        u_mouse: { type: "v2", value: new THREE.Vector2() },
+        u_resolution: { type: "v2", value: new THREE.Vector2() },
+        texture: { value: loader.load("img/texture.png") },
+        map: { value: loader.load("img/map.png") }
+      };
+
+      scene = new THREE.Scene();
+
+      camera = new THREE.Camera();
+      camera.position.z = 0;
+
+      var geometry = new THREE.PlaneBufferGeometry(2, 2);
+
+      var material = new THREE.ShaderMaterial( {
+        uniforms: uniforms,
+        vertexShader: document.getElementById( 'vertexShader' ).textContent,
+        fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+      });
+
+      var mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+
+      renderer = new THREE.WebGLRenderer({
+        antialias: true
+      });
+      renderer.setPixelRatio(window.devicePixelRatio);
+
+      document.body.appendChild(renderer.domElement);
+
+      window.onresize = onWindowResize;
+      document.onmousemove = getMouseXY;
+
+      onWindowResize();
+      animate();
+    }
+
+    init();
+  </script>
+</body>
+</html>

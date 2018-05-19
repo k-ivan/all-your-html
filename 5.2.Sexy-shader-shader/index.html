@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style type="text/css">
+    body {
+      margin: 0;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <script>
+    function loadImage(image, callback) {
+      var isImageElement = (image instanceof HTMLImageElement || image instanceof Image);
+      var instance = isImageElement ? image : new Image();
+
+      return new Promise(function (resolve, reject) {
+        instance.onload = function () {
+          instance.onload = instance.onerror = null;
+          typeof callback === 'function' && callback(null, instance);
+          resolve(instance);
+        };
+
+        instance.onerror = function (e) {
+          instance.onload = instance.onerror = null;
+          typeof callback === 'function' && callback(e, null);
+          reject(e);
+        };
+
+        if (!isImageElement) instance.src = image;
+
+        if (instance.complete) resolve(instance);
+      })
+    }
+
+    function createShader(gl, type, source) {
+      var shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+      if (success) {
+        return shader;
+      }
+
+      console.log(gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+    }
+
+    function createProgram(gl, vertexShader, fragmentShader) {
+      var program = gl.createProgram();
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+      var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+      if (success) {
+        return program;
+      }
+
+      console.log(gl.getProgramInfoLog(program));
+      gl.deleteProgram(program);
+    }
+
+    var vertexShaderSource = `
+      varying vec2 vUv;
+      attribute vec2 a_position;
+
+      void main() {
+        vUv = (a_position + 1.0) * 0.5;
+        vUv.y = 1.0 - vUv.y;
+        gl_Position = vec4(a_position, 0.0, 1.0);
+      }
+    `;
+
+    var fragmentShaderSource = `
+      precision mediump float;
+
+      varying vec2 vUv;
+      uniform vec2 u_resolution;
+      uniform vec2 u_mouse;
+      uniform float u_time;
+      uniform sampler2D u_texture;
+      uniform sampler2D u_map;
+
+      void main() {
+        float frequency = 100.0;
+        float amplitude = 0.009;
+
+        vec2 xy = vUv.xy / u_resolution.xy;
+        float map = texture2D(u_map, vUv).r;
+        float m = (u_mouse.x / u_resolution.x - 0.5) * 0.01;
+
+        float distortion = amplitude * sin(frequency * vUv.y + u_time) + m;
+        vec4 color = texture2D(u_texture, vec2(vUv.x + distortion * map, vUv.y));
+        gl_FragColor = vec4((1.0 - map) * color.rgb + map * vec3(color.r + color.g + color.b) / 3.0, 1.0);
+      }
+    `;
+
+    var images = [
+      'img/texture.png',
+      'img/map.png'
+    ];
+
+    var mouse = {
+      x: 0,
+      y: 0
+    };
+
+    var u_time = 0;
+
+    var vertices = new Float32Array([
+      -1, -1,
+      -1,  1,
+       1,  1,
+
+      -1, -1,
+       1,  1,
+       1, -1,
+    ]);
+
+    function onPointerMove(e) {
+      mouse.y = e.clientX;
+      mouse.x = e.clientY;
+    }
+
+    Promise.all(images.map(loadImage))
+      .then(function(loadedImages) {
+        var image = loadedImages[0];
+        var map = loadedImages[1];
+
+        var canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        document.body.appendChild(canvas);
+        document.onmousemove = onPointerMove;
+
+        var gl = canvas.getContext('webgl');
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+        var vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        var fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        var program = createProgram(gl, vertexShader, fragmentShader);
+        gl.useProgram(program);
+
+        var vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        var textures = [];
+        for (var ii = 0; ii < loadedImages.length; ++ii) {
+          var texture = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+
+          // задаём параметры для отображения изображения любого размера
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+          // загружаем изображение в текстуру
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, loadedImages[ii]);
+
+          // добавляем текстуру в массив текстур
+          textures.push(texture);
+        }
+
+        // получаем ссылки на сэмплеры
+        var u_textureLocation = gl.getUniformLocation(program, "u_texture");
+        var u_mapLocation = gl.getUniformLocation(program, "u_map");
+        // задаём, какой текстурный блок использовать при рендеринге
+        gl.uniform1i(u_textureLocation, 0); // текстурный блок 0
+        gl.uniform1i(u_mapLocation, 1); // текстурный блок 1
+        // привязываем текстуру к текстурному блоку
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, textures[0]);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, textures[1]);
+
+        var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+        gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+        var mouseUniformLocation = gl.getUniformLocation(program, "u_mouse");
+        gl.uniform2f(mouseUniformLocation, mouse.x, mouse.y);
+
+        var timeUniformLocation = gl.getUniformLocation(program, "u_time");
+        gl.uniform1f(timeUniformLocation, u_time);
+
+        const positionLocation = gl.getAttribLocation(program, 'a_position');
+        gl.enableVertexAttribArray(positionLocation);
+        // Указываем атрибуту, как получать данные от positionBuffer (ARRAY_BUFFER)
+        var size = 2;          // 2 компоненты на итерацию
+        var type = gl.FLOAT;   // наши данные - 32-битные числа с плавающей точкой
+        var normalize = false; // не нормализовать данные
+        var stride = 0;        // 0 = перемещаться на size * sizeof(type) каждую итерацию для получения следующего положения
+        var offset = 0;        // начинать с начала буфера
+        gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
+
+        function render() {
+          u_time += 0.05;
+
+          gl.uniform2f(mouseUniformLocation, mouse.x, mouse.x);
+          gl.uniform1f(timeUniformLocation, u_time);
+          gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+          var primitiveType = gl.TRIANGLES;
+          var offset = 0;
+          var count = 6;
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.drawArrays(primitiveType, offset, count);
+        }
+
+        function animate() {
+          render();
+          requestAnimationFrame(animate);
+        }
+
+        animate();
+      });
+  </script>
+</body>
+</html>

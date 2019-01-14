@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+  <style>
+    :root {
+      background: #f9f9f9;
+      color: #484848;
+    }
+
+    .hide {
+      position: absolute;
+      z-index: -1;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+      display: block;
+      width: 800px;
+      height: 600px;
+    }
+
+    .loading::after {
+      content: "Loading...";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10vmax;
+      letter-spacing: 0.05em;
+      background: rgba(255, 255, 255, 0.5);
+    }
+  </style>
+</head>
+<body class="loading">
+
+  <img src="https://images.wallpaperscraft.ru/image/sova_ptitsa_khishchnik_vzglyad_103959_1600x1200.jpg" alt="" class="hide" />
+  <img src="http://s1.1zoom.me/b5050/632/322509-alexfas01_1600x1200.jpg" alt="" class="hide" />
+  <img src="http://www.kartinkijane.ru/pic/201305/1600x1200/kartinkijane.ru-44736.jpg" alt="" class="hide" />
+
+  <canvas></canvas>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/2.0.2/TweenMax.min.js"></script>
+  <script>
+    var canvas;
+    var ghostCanvas;
+    var ctx;
+    var ghostCtx;
+    var images = [].slice.call(document.querySelectorAll('img'));
+    var dpx = devicePixelRatio || 1;
+    var w;
+    var h;
+    var cols = 10;
+    var rows = 10;
+    var xCell;
+    var yCell;
+    var isRunning = false;
+    var state = { value: 0 };
+    var currentIndex = 0;
+    var currentImage = images[0];
+    var nextImage;
+
+    function getIndex(index) {
+      var len = images.length;
+      return (index + len ) % len;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function init() {
+      document.body.className = '';
+
+      canvas = document.querySelector('canvas');
+      w = canvas.clientWidth * dpx;
+      h = canvas.clientHeight * dpx;
+
+      ctx = canvas.getContext('2d');
+      canvas.width = w;
+      canvas.height = h;
+      ctx.scale(dpx, dpx);
+
+      ghostCanvas = document.createElement('canvas');
+      ghostCtx = ghostCanvas.getContext('2d');
+      ghostCanvas.width = w;
+      ghostCanvas.height = h;
+      ghostCtx.scale(dpx, dpx);
+
+      TweenLite.ticker.fps(60);
+
+      canvas.onclick = animate;
+
+      xCell = w / cols;
+      yCell = h / rows;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(
+        currentImage, 0, 0, currentImage.naturalWidth, currentImage.naturalHeight,
+        0, 0, w, h
+      );
+    }
+
+    function animate() {
+      if (isRunning) return;
+      isRunning = true;
+
+      var nextIndex = getIndex(currentIndex + 1);
+      var fromState = state;
+      var toState = { value: 2 };
+
+      currentImage = images[currentIndex];
+      nextImage = images[nextIndex];
+
+      loop();
+
+      TweenLite.to(fromState, 1.5, {
+        value: toState.value,
+        onComplete: function() {
+          currentIndex = nextIndex;
+          isRunning = false;
+          state = { value: 0 };
+        }
+      });
+    }
+
+    function loop() {
+        if (!isRunning) return;
+        render();
+        requestAnimationFrame(loop);
+    };
+
+    function render() {
+      var value = state.value;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(
+        nextImage,
+        0, 0, nextImage.naturalWidth, nextImage.naturalHeight,
+        0, 0, w / dpx, h / dpx
+      );
+
+      ghostCtx.clearRect(0, 0, w, h);
+      ghostCtx.drawImage(
+        currentImage,
+        0, 0, currentImage.naturalWidth, currentImage.naturalHeight,
+        0, 0, w / dpx, h / dpx
+      );
+
+      for (var i = 0; i <= cols; i++) {
+        for (var j = 0; j <= rows; j++) {
+          var delay = i * j / (cols * rows);
+          ghostCtx.clearRect(
+            i * xCell,
+            j * yCell,
+            xCell * clamp(value - delay, 0, 1),
+            yCell * clamp(value - delay, 0, 1)
+          );
+        }
+      }
+
+      ctx.drawImage(ghostCanvas, 0, 0);
+    }
+
+    window.onload = init;
+  </script>

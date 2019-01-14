@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CSS mask</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <div class="slider">
+    <img
+      class="current"
+      src="https://2.bp.blogspot.com/-mF88Up2AFBM/WXUdLXgHkOI/AAAAAAAF4aw/6BTjG0HD6IMvJPhZfUuDQFx6M-LYX32LgCLcBGAs/s1600/Ilya%2BIbryaev%2BTutt%2527Art%2540%2B%252822%2529.jpg"
+      alt=""
+    />
+    <img
+      class=""
+      src="http://elitefon.ru/pic/201211/800x600/elitefon.ru-11560.jpg"
+      alt=""
+    />
+    <img
+      class=""
+      src="https://weneedfun.com/wp-content/uploads/2017/05/Beautiful-Watercolor-Paintings-29-768x557.jpg"
+      alt=""
+    />
+    <img
+      class=""
+      src="https://fotooboi-ekb.ru/files/image/image.(798).sm.jpg"
+      alt=""
+    />
+
+    <div class="slider-controls">
+      <button class="btn prev" type="button" data-action="prev">previous</button>
+      <button class="btn next" type="button" data-action="next">next</button>
+    </div>
+  </div>
+
+  <script src="js/script.js"></script>
+  <script src="js/cursor.js"></script>
+  <script>
+    const rootElement = document.querySelector('.slider');
+    const slider = new Slider(rootElement);
+  </script>
+</body>
+</html>

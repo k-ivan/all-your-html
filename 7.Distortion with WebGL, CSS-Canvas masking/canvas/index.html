@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CSS mask</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- 356 * 23 x 200 -->
+  <canvas class="slider" width="800" height="600"></canvas>
+
+  <div class="slider-controls">
+    <button class="btn prev" type="button" data-action="prev">previous</button>
+    <button class="btn next" type="button" data-action="next">next</button>
+  </div>
+
+  <script src="js/script.js"></script>
+
+  <script>
+    const images = [
+      'https://2.bp.blogspot.com/-mF88Up2AFBM/WXUdLXgHkOI/AAAAAAAF4aw/6BTjG0HD6IMvJPhZfUuDQFx6M-LYX32LgCLcBGAs/s1600/Ilya%2BIbryaev%2BTutt%2527Art%2540%2B%252822%2529.jpg',
+      'http://elitefon.ru/pic/201211/800x600/elitefon.ru-11560.jpg',
+      'https://weneedfun.com/wp-content/uploads/2017/05/Beautiful-Watercolor-Paintings-29-768x557.jpg',
+      'https://fotooboi-ekb.ru/files/image/image.(798).sm.jpg'
+    ];
+    const maskImage = 'img/nature-sprite.png';
+    const slider = new Slider({
+      root: document.querySelector('.slider'),
+      images,
+      maskImage
+    });
+  </script>
+</body>
+</html>

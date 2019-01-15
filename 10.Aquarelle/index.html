@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<title>Aquarelle</title>
+
+<style>
+  body {
+    margin: 0;
+    background-color: #faf8f5;
+  }
+
+  canvas {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
+  }
+</style>
+
+<canvas></canvas>
+
+<script>
+  function loadImage(url, callback) {
+    var image = new Image();
+
+    image.onload = function() {
+      callback(null, image);
+      image.onload = image.onerror = null;
+    }
+
+    image.onerror = function(error) {
+      callback(error);
+      image.onload = image.onerror = null;
+    }
+
+    image.src = url;
+  }
+
+  loadImage.all = function(urls, callback) {
+    var count = (urls || []).length;
+    var images = [];
+    var errors = null;
+
+    for (var i = 0; i < count; i++) {
+      (function(imageIndex) {
+        loadImage(urls[imageIndex], function(err, image) {
+          count--;
+          if (err) {
+            errors = errors || [];
+            errors[imageIndex] = error;
+          } else {
+            images[imageIndex] = image;
+          }
+          if (count === 0) {
+            callback(errors, images);
+          }
+        });
+      })(i)
+    }
+  }
+
+  loadImage.all(['img/photo.png', 'img/mask.png'], function(errors, images) {
+    console.log(errors, images);
+
+    if (errors) {
+      return console.error(errors);
+    }
+
+    var image = images[0];
+    var mask = images[1];
+
+    var canvas = document.querySelector('canvas');
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width = image.naturalWidth;
+    var h = canvas.height = image.naturalHeight;
+
+    var requestId;
+    var lastTime = 0;
+    var speed = 750;
+    var state = 0;
+    var isRunning = false;
+
+    function loop(time) {
+      if (!isRunning) return;
+      var dt = time - lastTime;
+      var diff = speed * dt * 0.001;
+      state += diff;
+      lastTime = time;
+
+      console.log(state);
+      render(state);
+      requestId = window.requestAnimationFrame(loop);
+    }
+
+    function render(value) {
+      var width = value;
+      var height = width * h / w;
+      var x = (w - width) * 0.5;
+      var y = (h - height) * 0.5;
+
+      // if (x <= 0) {
+      //   isRunning = false;
+      // }
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(mask, x, y, width, height);
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.drawImage(image, 0, 0, w, h);
+    }
+
+    function stop() {
+      window.cancelAnimationFrame(requestId);
+      isRunning = false;
+      lastTime = 0;
+      state = 0;
+    }
+
+    canvas.onclick = function() {
+      stop();
+      isRunning = true;
+      requestId = window.requestAnimationFrame(loop);
+    }
+
+    isRunning = true;
+    requestId = window.requestAnimationFrame(loop)
+  });
+</script>

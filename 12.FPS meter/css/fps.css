@@ -1,0 +1,8 @@
+#__FPS_METER__ {
+  position: fixed;
+  z-index: 9999;
+  top: 16px;
+  right: 16px;
+  display: block;
+  background: linear-gradient(hsla(204, 64%, 54%, 1), hsl(188, 69%, 64%));
+}

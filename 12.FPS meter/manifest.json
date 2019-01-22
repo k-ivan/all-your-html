@@ -1,14 +1,19 @@
 {
   "manifest_version": 2,
   "name": "FPS Meter",
-  "version": "0.0.1",
+  "version": "0.1.1",
   "content_scripts": [
     {
       "matches": [
         "<all_urls>"
       ],
-      "js": ["js/fps.js"],
-      "css": ["css/fps.css"]
+      "js": [
+        "js/webcomponents-sd-ce.js",
+        "js/fps.js",
+        "js/content.js"
+      ],
+      "css": ["css/fps.css"],
+      "run_at": "document_end"
     }
   ],
   "background": {

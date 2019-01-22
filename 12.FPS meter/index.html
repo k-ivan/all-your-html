@@ -6,10 +6,11 @@
   <link rel="stylesheet" href="css/fps.css">
 </head>
 <body>
+  <fps-meter></fps-meter>
+
   <script src="js/fps.js"></script>
   <script>
-    const fps = new FPS();
-    fps.run();
+    window.customElements.define('fps-meter', FPSMeter);
   </script>
 </body>
 </html>

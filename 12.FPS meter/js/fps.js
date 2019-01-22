@@ -4,21 +4,73 @@ const WIDTH = 100;
 const HEIGHT = 70;
 const FONT_SIZE = 26;
 
-class FPS {
+const tmpl = document.createElement('template');
+tmpl.innerHTML = `
+  <style>
+    :host {
+      position: fixed;
+      z-index: 9999;
+      left: 16px;
+      top: 16px;
+      transform: translate(calc(var(--x) * 1px), calc(var(--y) * 1px));
+      overflow: hidden;
+      border-radius: 3px;
+      user-select: none;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    canvas {
+      display: block;
+      background: linear-gradient(hsla(204, 64%, 54%, 1), hsl(188, 69%, 64%));
+    }
+  </style>
+  <canvas></canvas>
+`;
+
+class FPSMeter extends HTMLElement {
+  static get observedAttributes() {
+    return ['is-running'];
+  }
+
   constructor() {
-    this.canvas = document.createElement('canvas');
-    this.canvas.id = '__FPS_METER__';
+    super();
+    const shadowRoot = this.attachShadow({ mode: 'open' });
+    shadowRoot.appendChild(tmpl.content.cloneNode(true));
+
+    this.canvas = shadowRoot.querySelector('canvas');
     this.canvas.width = WIDTH;
     this.canvas.height = HEIGHT;
     this.ctx = this.canvas.getContext('2d');
     this.ctx.font = `400 ${FONT_SIZE}px/1 'SFMono-Regular', 'Menlo', monospace`;
+
+    this.pos = { x: 0, y: 0 };
+
     this.isRunning = false;
     this.frame = 0;
     this.startTime = 0;
     this.currentTime = 0;
     this.allFPS = [];
-    document.body.appendChild(this.canvas);
-    this.canvas.onclick = () => this.toggle();
+
+    [
+      'onPointerDown',
+      'onPointerMove',
+      'onPointerUp',
+      'toggle'
+    ].forEach(method => this[method] = this[method].bind(this));
+    this.addEventListener('pointerdown', this.onPointerDown);
+    this.addEventListener('click', this.toggle);
+  }
+
+  get isRunning() {
+    return this.hasAttribute('is-running');
+  }
+
+  set isRunning(val) {
+    if (val) {
+      this.setAttribute('is-running', '');
+    } else {
+      this.removeAttribute('is-running');
+    }
   }
 
   toggle() {
@@ -82,15 +134,37 @@ class FPS {
   destroy() {
     this.isRunning = false;
     this.allFPS = null;
-    document.body.removeChild(this.canvas);
   }
-}
 
-chrome.runtime.onMessage.addListener(
-  function(request, sender, sendResponse) {
-    if (request.message === 'clicked_browser_action') {
-      const fps = new FPS();
-      fps.run();
-    }
+  onPointerDown(event) {
+    const { clientX, clientY } = event;
+    const { pos } = this;
+    const box = this.getBoundingClientRect();
+    pos.x = clientX - box.x;
+    pos.y = clientY - box.y;
+    document.addEventListener('pointermove', this.onPointerMove);
+    document.addEventListener('pointerup', this.onPointerUp);
+    document.addEventListener('pointercancel', this.onPointerUp);
   }
-);
+
+  onPointerUp(event) {
+    document.removeEventListener('pointermove', this.onPointerMove);
+    document.removeEventListener('pointerup', this.onPointerUp);
+    document.removeEventListener('pointercancel', this.onPointerUp);
+  }
+
+  onPointerMove(event) {
+    const { clientX, clientY } = event;
+    const { pos } = this;
+    const moveX = clientX - pos.x;
+    const moveY = clientY - pos.y;
+    this.style.setProperty('--x', moveX);
+    this.style.setProperty('--y', moveY);
+  }
+
+  connectedCallback() {}
+
+  disconnectedCallback() {}
+
+  attributeChangedCallback(attrName, oldVal, newVal) {}
+}

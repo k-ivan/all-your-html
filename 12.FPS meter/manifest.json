@@ -12,7 +12,6 @@
         "js/fps.js",
         "js/content.js"
       ],
-      "css": ["css/fps.css"],
       "run_at": "document_end"
     }
   ],
